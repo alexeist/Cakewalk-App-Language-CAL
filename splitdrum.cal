@@ -1,0 +1,154 @@
+; Split Drums to Tracks.cal
+;
+; This routine modifies a source track, splitting it by note# into 
+; separate destination tracks. Only notes are split ... all other 
+; track parameters (Controllers, Tempos, Meters and Markers), 
+; if any, remain in the source track.
+;
+; Use this routine for splitting up a drums to separate tracks with track name like Yamacha drum mashine.
+;
+; Author Alexan4der Eist 2012
+
+(do
+	(if (< VERSION 40)
+		(do
+			(pause "This CAL program requires CAL version 2.0 or higher")
+			(exit)
+		)
+	)
+	(include "need40.cal")	; Require version 4.0 or higher of CAL
+
+	(int nOctave)
+	(int nSrcTrk 1)
+	(int nDestTrk (+ nSrcTrk 1))
+	(int nDestChan 0)
+	(int nDestPort 1)
+	(int nNote 0)
+	(int bEvent FALSE)
+
+	(getInt nSrcTrk "Source Track?" 1 256)
+	(-- nSrcTrk)	; CAL uses 0..255
+
+	(getInt nDestTrk "First Destination Track?" 1 256)
+	(-- nDestTrk)	; CAL uses 0..255
+
+	(getInt nDestChan "Destination Channel?" 0 16)
+	(-- nDestChan)	; CAL uses -1..15
+
+	(getInt nDestPort "Destination Port?" 1 16)
+	(-- nDestPort)	; 0 .. 15
+
+	; If markers not set, select entire range
+	(if (== From Thru) 
+		(do
+			(= From 0)
+			(= Thru End)
+		)
+	)
+
+	; Select only source track
+	(TrackSelect 0 -1)
+	(TrackSelect 1 nSrcTrk)
+
+	; Set filter params. Split notes only .. 
+	; Controllers stay in source track.
+	(ResetFilter 0 TRUE)
+	(SetFilterKind 0 NOTE TRUE)
+	(SetFilterKind 0 KEYAFT FALSE)
+	(SetFilterKind 0 CONTROL FALSE)
+	(SetFilterKind 0 PATCH FALSE)
+	(SetFilterKind 0 CHANAFT FALSE)
+	(SetFilterKind 0 WHEEL FALSE)
+	
+	(while (< nNote 127)
+		(do
+			; Check for note events at current note # ...
+			(forEachEvent
+				(if (&& (== Event.Kind NOTE) (== Note.Key nNote))
+					(= bEvent TRUE)
+				)
+			)
+
+			; If there are note events, paste them to the destination track
+			(if (== bEvent TRUE)
+				(do
+					; Status message
+					(message "Note # " nNote " --> Track " (+ 1 nDestTrk))
+
+					; Set up filter .. item 0, NOTE, in the range nNote..nNote
+					(SetFilterRange 0 0 TRUE nNote nNote)
+					
+					; Cut/Paste the filtered events to the destintation track
+					(EditCut From Thru TRUE TRUE FALSE FALSE FALSE FALSE)
+					(EditPasteToTrack From 1 1 TRUE FALSE FALSE FALSE nDestTrk)
+
+					; Name dest track
+					(= nOctave (/ nNote 12))
+					(switch nNote 
+						35 (TrackName (format "Acustic Bass" ) nDestTrk)
+						36 (TrackName (format "Bass Drum H" ) nDestTrk)
+						37 (TrackName (format "Side Stick" ) nDestTrk)
+						38 (TrackName (format "Snare M" ) nDestTrk)
+						39 (TrackName (format "Hand Clap" ) nDestTrk)
+						40 (TrackName (format "Snare electric" ) nDestTrk)
+						41 (TrackName (format "Floor Tom L") nDestTrk)
+						42 (TrackName (format "Closed HH" ) nDestTrk)
+						43 (TrackName (format "Flor Tom H" ) nDestTrk)
+						44 (TrackName (format "Hi-Hat Pedal") nDestTrk)
+						45 (TrackName (format "Low Tom") nDestTrk)
+						46 (TrackName (format "Open HH" ) nDestTrk)
+						47 (TrackName (format "Mid Tom L") nDestTrk)
+						48 (TrackName (format "Mid Tom H") nDestTrk)
+						49 (TrackName (format "Crash Cimbal 1") nDestTrk)
+						50 (TrackName (format "High Tom") nDestTrk)
+						51 (TrackName (format "Ride Cimbal 1") nDestTrk)
+						52 (TrackName (format "Chinese Cimb.") nDestTrk)
+						53 (TrackName (format "Ride Cimbal 2") nDestTrk)
+						54 (TrackName (format "Tambourine") nDestTrk)
+						55 (TrackName (format "Splash Cimbal 1") nDestTrk)
+						56 (TrackName (format "Cowbell") nDestTrk)
+						57 (TrackName (format "Crash Cimbal 2") nDestTrk)
+						58 (TrackName (format "Vibraslap") nDestTrk)
+						59 (TrackName (format "Ride Cimbal 2") nDestTrk)
+						60 (TrackName (format "Bongo H") nDestTrk)
+						61 (TrackName (format "Bongo L") nDestTrk)
+						62 (TrackName (format "Conga H Mute") nDestTrk)
+						63 (TrackName (format "Conga H Open") nDestTrk)
+						64 (TrackName (format "Conga L") nDestTrk)
+						65 (TrackName (format "Timbale High") nDestTrk)
+						66 (TrackName (format "Timbale Low") nDestTrk)
+						67 (Trackname (format "Agogo H") nDestTrk)
+						68 (TrackName (format "Agogo L") nDestTrk)
+						69 (TrackName (format "Cabasa") nDestTrk)
+						70 (TrackName (format "Maracas") nDestTrk)
+						71 (TrackName (format "Whistle Short") nDestTrk)
+						72 (TrackName (format "Whistle Long") nDestTrk)
+						73 (TrackName (format "Guiro Short") nDestTrk)
+						74 (TrackName (format "Guiro Long") nDestTrk)
+						75 (TrackName (format "Claves") nDestTrk)
+						76 (TrackName (format "Wood Block H") nDestTrk)
+						77 (TrackName (format "Wood block L") nDestTrk)
+						78 (TrackName (format "Cuica Mute") nDestTrk)
+						79 (TrackName (format "Cuica Open") nDestTrk)
+						80 (TrackName (format "Triangle Mute") nDestTrk)
+						81 (TrackName (format " Triangle Open") nDestTrk)
+						82 (TrackName (format "Shaker") nDestTrk)
+						83 (TrackName (format "Jingle Bell") nDestTrk)
+						84 (TrackName (format "Bell Tree") nDestTrk)
+						nNote (TrackName (format nNote) nDestTrk)
+					)
+					
+					; Set forced channel & port, and unmute it
+					(TrackChannel nDestChan nDestTrk)
+					(TrackPort nDestPort nDestTrk)
+					(TrackActive TRUE nDestTrk)
+					
+					(++ nDestTrk)
+					(= bEvent FALSE)
+				)
+			)
+			; Else
+			(++ nNote)
+		)
+	)
+)

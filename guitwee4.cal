@@ -1,0 +1,94 @@
+; make weel at start or end of note for effect glissando
+; Written by Alex Eist 2/10/2002 
+; updated 09/2017
+; This software is free for use, update and contrubute for everybody
+; please leave the author name in comment
+(do
+  (int debug FALSE)                                                              ; for debug
+	(int MinKey 60)                                                               ; the lowest Note.Key to be adupt
+	(int mode 0)                                                                  ; mode 0=>change only Start of Note; 1 => the Start and End ;  2 - only End; 
+	(getInt mode "What to change? 1=Start + End, 0=Only start, 2=Only End" 0 2)   ; get mode interface
+	(int curAmpl 0)                                                               ; current Amlpotude
+	(int curAmpl2)                                                                 ; last Amplitude
+	(int dAmpl 0)                                                                   ; differencial of the Amplitude
+	(int dAmpl2 0)                                                                  ; differencial of the last Amplitude
+	(int CurBar 1)                                                                  ; current measure
+	(int TimeFactor 480)		                                                         ; the time of effect
+	(int curT)                                                                       ; current Time absolute
+	(int curT2)                                                                      ; current Time into the current measure
+   (dword NoteEnd)                                                                 ; the Time of the Note.End absolute
+	(word MinD (/ TIMEBASE 8) )                                                       ; the minimum duration of the NOTE to be adupted
+  (pause "TIMEBASE=" TIMEBASE  ", Continue?")                                       ; information for user
+  (string ST  " Minimum of Note duration (30 32000)?" )                              ; create the string for messages
+	(getWord MinD ST (/ TIMEBASE 8) (* TIMEBASE 8) )                                   ; action at a 1/16 - 2 measures
+	(getInt MinKey "Minimum Key for execute (A5=69)"  1  127 )                         ;  cut the bass notes
+	(int Ampl -8191)	; Volume of Pich at the Start.                                    ; Amplitude of the effect fot Note.Start
+	(int Ampl2 -8191)	; Ampl. of WHEEL at the End                                       ; Amplitude of the effect fot Note.End
+	(getInt Ampl "Volume of Starting Pich (-8192 8191) ?" -8192 8191)                    ; get it
+	(getInt Ampl2  " Pich at the ENDING (-8192 8191) ? " -8192 8191)                      ; get it
+	(int speed  (/ TIMEBASE 4)  )  	; Duration of Pich in ticks  1/16                      ; duration of the effect 
+	(getInt speed "Duration of Pich in ticks? " (/ TIMEBASE 4) (* TIMEBASE 2 ) )           ; message for user min max long slide is 1/16 - 1/2
+	 	(= dAmpl (/ Ampl speed))                                                             ; calculate the step for change the effect at the Note.Start
+		(= dAmpl2 (/ Ampl2 speed))                                                           ; calculate the step for change the effect at the Note.End
+		(if	 (> speed MinD)                                                                  ; select the notes
+    		 (=  MinD  speed)                                                                ;correct  the variables
+		)
+		
+ (pause "MinD=" MinD ",   speed=" speed ", Continue?")                                    ; information for user
+
+		(if (== From Thru)                                                                    ; correct the selection. If no any selection use full track
+			(do 
+				(= From  0)
+				(= Thru End)
+			)
+		)	
+				(forEachEvent                                                                      ; start scaning
+					(do                                                                              ; do for multitask in scaning
+ (if (== debug TRUE)  (pause "44> In progress   forEachEvent>do> " )  )                     ; information for user in debug mode
+						(if (== Event.Kind NOTE)                                                         ; /// if we find the NOTE
+							(if (>= Note.Dur MinD)                                                         ; if terms is ok?
+								(if (>   Note.Key MinKey)                                                    ; if term is ok?
+  								(do                                                                         ; start action
+ (if (== debug TRUE)  (pause "49>  In progress  any modes   " Event.Time  " tics, Measure# " (/ (- Event.Time From) (* TIMEBASE 4) ) ) )              
+  									 (= NoteEnd (+ Event.Time Note.Dur) )                                      ; calculate the absolute time of Note.End
+                    (= curT speed)								   	                                         ; select duration of the effect
+  									(= curT2  (- Note.Dur speed) )                                              ; select the step of the changing amplitude of the effect
+  									(= curAmpl 0)                                                               ; clear the var
+  									(= curAmpl2 0)                                                              ; clear the var
+  									(= CurBar (/ Now (* TIMEBASE 4) ) )                                          ; calculate measure #
+                                     
+  ;									(pause " In progress BAR " CurBar)
+  									(if (!= mode 2)                                                              ; if not mode 2 (Note.Start mus be changed)
+  										(while  (> curT 0)                                                         ; we will decrement the curT - duration of the effect at a Note.Start
+  											(do 
+ (if (== debug TRUE)  (pause " In progress mode !=2   " Event.Time  " tics, Measure# " (/ (- Event.Time From) (* TIMEBASE 4) ) ) )                        												
+  												(insert (+ Event.Time curT) Event.Chan WHEEL curAmpl)
+  												(+= curAmpl dAmpl)
+  												(-- curT )
+  											)
+  										)                                                                              ; back to wile... 
+                     )
+  									(if (!= mode 0)                                                                  ; mode with Note.End changing
+  											(do
+  											(while  (>=  NoteEnd (+ Event.Time curT2) )     
+  												(do 
+  												
+(if (== debug TRUE) (pause " In progress mode !=0, curT2:"  curT2 ", NoteEnd:" NoteEnd  ",Event.Time:" Event.Time ) )                    
+  													(insert (+ Event.Time  curT2) Event.Chan WHEEL curAmpl2)
+  													(+= curAmpl2 dAmpl2)
+  													(++ curT2 )
+  												)
+  											)                                                                               ; go wile 
+  										  (insert (+ Event.Time   Note.Dur )	Event.Chan WHEEL 0)   ; reset weel           ; clear pich weel for Zero
+  										)  ; end do
+  									)		; end if != mode 0			
+  								)  ; end do
+                )    ; end if Note.Key > MinKey
+								
+							)     ; end if Note.Dur > minD
+						)      ; end if Event.Kind NOTE
+					)	       ; end do
+			   )          ; end forEachEvent
+
+)		
+	
